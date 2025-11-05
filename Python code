@@ -1,0 +1,129 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+def plot_publishable_xrd(csv_file, output_image="XRD_TiO2_Anatase.png"):
+    """
+    Reads XRD data from a CSV file and generates a publication-quality
+    plot with annotated peaks.
+    """
+    
+    # --- 1. Define Standard Peaks to Label ---
+    # Based on the table provided by the user.
+    # We select the most intense peaks for clarity.
+    # Format: (2-Theta_Standard, (hkl)_Label)
+    anatase_peaks = [
+        (25.303, '(101)'),
+        (37.792, '(004)'),
+        (48.035, '(200)'),
+        (53.884, '(105)'),
+        (55.059, '(211)'),
+        (62.683, '(204)'),
+        (68.701, '(116)'),
+        (70.182, '(220)'),
+        (75.043, '(215)')
+    ]
+
+    # --- 2. Load Experimental Data ---
+    try:
+        data = pd.read_csv(csv_file)
+        # Ensure column names are correct. Adjust '2-Theta' and 'Intensity'
+        # if your CSV uses different headers.
+        two_theta = data['2-Theta']
+        intensity = data['Intensity']
+    except FileNotFoundError:
+        print(f"Error: Could not find file {csv_file}")
+        return
+    except KeyError:
+        print(f"Error: CSV must have '2-Theta' and 'Intensity' columns.")
+        return
+
+    # --- 3. Set Up the Plot Aesthetics (for publication) ---
+    plt.rcParams.update({
+        'font.size': 30,
+        'font.family': 'Times New Roman', # A common publication font
+        'axes.linewidth': 1.5,
+        'xtick.major.width': 1.5,
+        'ytick.major.width': 1.5,
+        'xtick.direction': 'in',
+        'ytick.direction': 'in',
+        'xtick.top': True,
+        'ytick.right': True,
+        'ytick.left': True # Ensure ticks are still drawn
+    })
+
+    fig, ax = plt.subplots(figsize=(12, 7))
+
+    # --- 4. Plot the Data ---
+    ax.plot(two_theta, intensity, color='black', linewidth=3.0, label='TiO₂ Anatase')
+
+    # --- 5. Annotate the Peaks ---
+    # Normalize intensity for easier annotation offsetting
+    i_max = intensity.max()
+    
+    for (peak_2theta, hkl_label) in anatase_peaks:
+        # Find the experimental peak maximum near the standard value
+        # Look in a small window (e.g., +/- 0.5 degrees) around the standard peak
+        window = (two_theta >= peak_2theta - 0.5) & (two_theta <= peak_2theta + 0.5)
+        
+        if window.any():
+            # Find the index of the max intensity *within that window*
+            peak_index = intensity[window].idxmax()
+            
+            # Get the exact x, y coordinates of the experimental peak
+            x_pos = two_theta[peak_index]
+            y_pos = intensity[peak_index]
+            
+            # Add annotation text
+            ax.annotate(
+                hkl_label,
+                xy=(x_pos, y_pos),
+                xytext=(x_pos, y_pos + 0.05 * i_max), # Place text 5% above the peak
+                ha='center',                         # Horizontal alignment
+                va='bottom',                         # Vertical alignment
+                fontsize=20,
+                rotation=90,                         # *** Set text rotation to vertical ***
+                arrowprops=dict(
+                    arrowstyle="-", # Simple line
+                    color='red',
+                    lw=3
+                )
+            )
+
+    # --- 6. Finalize Plot (Labels, Limits, Layout) ---
+    ax.set_xlabel('2θ (Degrees)', fontsize=30, fontweight='bold')
+    ax.set_ylabel('Intensity (a.u.)', fontsize=30, fontweight='bold')
+    ax.set_title('XRD Pattern - TiO₂ Anatase', fontsize=30, fontweight='bold')
+    
+    # *** Remove y-axis tick labels (the numbers) ***
+    ax.set_yticklabels([])
+    
+    # Set plot limits
+    ax.set_xlim(20, 80)
+    ax.set_ylim(bottom=0)
+
+    # Add a legend (if you plot multiple samples)
+    # ax.legend() 
+    
+    # Ensure a tight layout
+    plt.tight_layout()
+
+    # --- 7. Save and Show the Plot ---
+    plt.savefig(output_image, dpi=300, bbox_inches='tight')
+    print(f"\nPlot saved as {output_image}")
+    plt.show()
+
+
+# --- Main execution ---
+if __name__ == "__main__":
+    # --- User Settings ---
+    # 1. Set the path to your CSV file here
+    your_csv_filename = "TiO2_A.csv"
+    
+    # 2. Set the desired output image filename
+    output_filename = "XRD_TiO2_Anatase_Plot.png"
+    # --- End User Settings ---
+
+    # Plot the data from the specified CSV
+    plot_publishable_xrd(your_csv_filename, output_filename)
+
